@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
-
+/// <summary>
+/// AI拥有的状态
+/// </summary>
 public enum AIState
 {
     Idle,
@@ -14,27 +16,27 @@ public enum AIState
     Back,
     Skill
 }
+/// <summary>
+/// AI的基类
+/// </summary>
 public abstract class AINew : MonoBehaviour
 {
-    private AIState nowState;
+    private AIState nowState;                   //AI当前状态
 
-    public AIState LastState;
+    public AIState LastState;                   //上一个状态，主要时如果当前状态的功能实现与上一个状态有关联时有用（目前没用）
 
-    public Transform Target;
+    public Transform Target;                    //AI的目标，这里直接通过Unity拖拽添加
 
-    public float AttackDistance;
+    public float AttackDistance;                //怪物攻击距离
 
-    public float backThreshold;
+    public float backThreshold;                 //怪物后退阈值，怪物距离目标太近可以进行后退操作
 
 
-    [Range(0,100)]
-    public int CurrentHP;
+    protected NavMeshAgent NV;                  //寻路组件
 
-    protected NavMeshAgent NV;
+    protected float CurrentSelfToTargetDis;     //目标与自身在xz平面内的直线距离
 
-    protected float CurrentSelfToTargetDis;
-
-    private ITriggerAIAction _idleInitAction;
+    private ITriggerAIAction _idleInitAction;   //各种节点接口，可丰富功能后在子类中进行挂载
     private ITriggerAIAction _attackAction;
     private ITriggerAIAction _backAction;
     private ITriggerAIAction _injuredAction;
@@ -42,37 +44,38 @@ public abstract class AINew : MonoBehaviour
     private ITriggerAIAction _dieAction;
     private ITriggerAIAction _skillOneAction;
 
-    private List<ITriggerAIAction> ActionArray;
-    protected Renderer[] mr;
-    protected Collider[] colliders;
-    protected Animator Ani;
-    protected List<SkillCDAndWeight_New> SkillList = new List<SkillCDAndWeight_New>();
-    protected PropertyQueue<SkillCDAndWeight_New> PropertyQueue = new PropertyQueue<SkillCDAndWeight_New>();
 
-    private Dictionary<AIState, ITriggerAIAction> _actionDic;
+    protected Renderer[] mr;                    //AI身上的渲染组件，这里获取用来实现溶解效果（需要相应的Shader配合）
+    protected Collider[] colliders;             //AI身上碰撞器，在某些时刻可能需要AI不接受碰撞信息
+    protected Animator Ani;                     //动画组件
+    protected List<SkillCDAndWeight_New> SkillList = new List<SkillCDAndWeight_New>();                          //存放所有技能的列表，用于AI技能的重置
+    protected PropertyQueue<SkillCDAndWeight_New> PropertyQueue = new PropertyQueue<SkillCDAndWeight_New>();    //优先级队列，用于取出当前可释放的优先级最高的技能
+
+    private Dictionary<AIState, ITriggerAIAction> _actionDic;                                                   //保存功能节点与状态的一对一映射
     
-    private List<SkillCDAndWeight_New> CdCalList = new List<SkillCDAndWeight_New>();
+    private List<SkillCDAndWeight_New> _cdCalList = new List<SkillCDAndWeight_New>();                            //CD冷却列表，需要冷却的技能在释放时都会添加到其中
 
     // Use this for initialization
     public virtual void Awake()
     {
         NV = GetComponent<NavMeshAgent>();
-        ActionArray=new List<ITriggerAIAction>();
         mr = GetComponentsInChildren<Renderer>();
         colliders = GetComponentsInChildren<Collider>();
         Ani = GetComponent<Animator>();
     }
 
     
-
+    /// <summary>
+    /// 由于AI使用对象池存取，所以通过setActive（false）来进行初始化
+    /// </summary>
     void OnEnable()
     {
-        foreach (SkillCDAndWeight_New skillCdAndWeight in SkillList)
+        foreach (SkillCDAndWeight_New skillCdAndWeight in SkillList)    //将列表中所有的技能重新添加到CD冷却列表中重新开始冷却
         {
-            CdCalList.Add(skillCdAndWeight);
+            _cdCalList.Add(skillCdAndWeight);
         }
-        StartCoroutine(BaseUpdate());
-        StartCoroutine(CalCD());
+        StartCoroutine(BaseUpdate());                                   //基本逻辑更新判断（未优化）
+        StartCoroutine(CalCD());                                        //控制技能冷却协程
     }
 
     public virtual void Start ()
@@ -85,7 +88,7 @@ public abstract class AINew : MonoBehaviour
     {
         yield return new WaitForSeconds(0.1f);
         yield return new WaitUntil(()=>DieAction!=null);
-        _actionDic = new Dictionary<AIState, ITriggerAIAction>()
+        _actionDic = new Dictionary<AIState, ITriggerAIAction>()            //保存状态与功能节点的映射（主要用来消除冗长的Switch）
         {
             {AIState.Idle, IdleInitAction },
             {AIState.Run,RunAction },
@@ -97,6 +100,7 @@ public abstract class AINew : MonoBehaviour
         };
 
         ChangeState(AIState.Idle);
+        //简单的AI逻辑判断，这一部分后期可以通过行为树来优化
         while (true)
         {
             if (Target == null)
@@ -106,7 +110,7 @@ public abstract class AINew : MonoBehaviour
             }
             CurrentSelfToTargetDis = DistanceSelfToTarget(Target);
 
-            if (isCanChangeState)
+            if (_isCanChangeState)
             {
                 //if (CurrentSelfToTargetDis < (AttackDistance - backThreshold))
                 //{
@@ -125,6 +129,11 @@ public abstract class AINew : MonoBehaviour
             yield return null;
         }
     }
+    /// <summary>
+    /// 计算目标与自己在xz平面内的直线距离
+    /// </summary>
+    /// <param name="target">目标点</param>
+    /// <returns></returns>
     public float DistanceSelfToTarget(Transform target)
     {
         Vector3 SelfPos = transform.position;
@@ -133,6 +142,11 @@ public abstract class AINew : MonoBehaviour
         TargetPos.y = 0;
         return Vector3.Distance(SelfPos, TargetPos);
     }
+    /// <summary>
+    /// 计算目标与自己在xz平面内的直线距离
+    /// </summary>
+    /// <param name="target">目标点三维向量</param>
+    /// <returns></returns>
     public float DistanceSelfToTarget(Vector3 target)
     {
         Vector3 SelfPos = transform.position;
@@ -141,12 +155,18 @@ public abstract class AINew : MonoBehaviour
         TargetPos.y = 0;
         return Vector3.Distance(SelfPos, TargetPos);
     }
+    /// <summary>
+    /// AI状态的切换，并根据不同的状态触发相应的功能节点
+    /// </summary>
+    /// <param name="state">AI需要切换到的状态</param>
     private void ChangeState(AIState state)
     {
+        //当前状态死亡，但是需要切换非Idle状态是不允许的
         if ( NowState == AIState.Die&&state!=AIState.Idle)
         {
             return;
         }
+        //切换状态的另一个条件，就是当前状态能够被当前状态替代
         if (!SetCurrentActionStop(nowState,state))
         {
             return;
@@ -154,15 +174,20 @@ public abstract class AINew : MonoBehaviour
         LastState = NowState;
         NowState = state;
 
-        _actionDic[NowState].TriggerAction();
+        _actionDic[NowState].TriggerAction();       //替换状态成功，触发功能节点
     }
-
+    /// <summary>
+    /// 提供当前状态和新状态，并返回当前状态是否允许被取消
+    /// </summary>
+    /// <param name="state">当前状态</param>
+    /// <param name="newState">新状态</param>
+    /// <returns></returns>
     public bool SetCurrentActionStop(AIState state, AIState newState)
     {
         return _actionDic[state].CancelAction(newState);
     }
 
-    private bool isCanChangeState = true;
+    private bool _isCanChangeState = true;
 
     public AIState NowState
     {
@@ -175,6 +200,7 @@ public abstract class AINew : MonoBehaviour
         {
             if (value!=nowState)
             {
+                //状态变化后的相应回调
                 StateChangeCallBackDeal(value,nowState);
             }
             nowState = value;
@@ -190,13 +216,10 @@ public abstract class AINew : MonoBehaviour
 
         set
         {
-            if (_attackAction!=null)
+            if (value != null)
             {
-                ActionArray.Remove(_attackAction);
-            }
-            if (value!=null)
-            {
-                ActionArray.Add(value);
+                //如果动态修改技能，相应的修改相应的映射
+                _actionDic[AIState.Attack] = value;
             }
             _attackAction = value;
         }
@@ -211,13 +234,10 @@ public abstract class AINew : MonoBehaviour
 
         set
         {
-            if (_backAction != null)
-            {
-                ActionArray.Remove(_backAction);
-            }
             if (value != null)
             {
-                ActionArray.Add(value);
+                //如果动态修改技能，相应的修改相应的映射
+                _actionDic[AIState.Back] = value;
             }
             _backAction = value;
         }
@@ -232,13 +252,10 @@ public abstract class AINew : MonoBehaviour
 
         set
         {
-            if (_injuredAction != null)
-            {
-                ActionArray.Remove(_injuredAction);
-            }
             if (value != null)
             {
-                ActionArray.Add(value);
+                //如果动态修改技能，相应的修改相应的映射
+                _actionDic[AIState.Injured] = value;
             }
             _injuredAction = value;
         }
@@ -253,13 +270,10 @@ public abstract class AINew : MonoBehaviour
 
         set
         {
-            if (_runAction != null)
-            {
-                ActionArray.Remove(_runAction);
-            }
             if (value != null)
             {
-                ActionArray.Add(value);
+                //如果动态修改技能，相应的修改相应的映射
+                _actionDic[AIState.Run] = value;
             }
             _runAction = value;
         }
@@ -274,13 +288,10 @@ public abstract class AINew : MonoBehaviour
 
         set
         {
-            if (_dieAction != null)
-            {
-                ActionArray.Remove(_dieAction);
-            }
             if (value != null)
             {
-                ActionArray.Add(value);
+                //如果动态修改技能，相应的修改相应的映射
+                _actionDic[AIState.Die] = value;
             }
             _dieAction = value;
         }
@@ -295,13 +306,9 @@ public abstract class AINew : MonoBehaviour
 
         set
         {
-            if (_skillOneAction != null)
-            {
-                ActionArray.Remove(_skillOneAction);
-            }
             if (value != null)
             {
-                ActionArray.Add(value);
+                //如果动态修改技能，相应的修改相应的映射
                 _actionDic[AIState.Skill] = value;
             }
             _skillOneAction = value;
@@ -317,39 +324,57 @@ public abstract class AINew : MonoBehaviour
 
         set
         {
-            if (_idleInitAction != null)
-            {
-                ActionArray.Remove(_idleInitAction);
-            }
             if (value != null)
             {
-                ActionArray.Add(value);
+                //如果动态修改技能，相应的修改相应的映射
+                _actionDic[AIState.Idle] = value;
             }
             _idleInitAction = value;
         }
     }
 
+    /// <summary>
+    /// 设置当前AI是否允许切换状态
+    /// </summary>
+    /// <param name="flag"></param>
     public void SetComplete(bool flag)
     {
-        isCanChangeState = flag;
+        _isCanChangeState = flag;
     }
+    /// <summary>
+    /// 获取可切换状态
+    /// </summary>
+    /// <returns></returns>
     public bool GetComplete()
     {
-        return isCanChangeState;
+        return _isCanChangeState;
     }
+    /// <summary>
+    /// 测试（通过Button）手动触发被击状态
+    /// </summary>
     public void TestInjured()
     {
         ChangeState(AIState.Injured);
     }
+    /// <summary>
+    /// 测试（通过Button）手动触发死亡状态
+    /// </summary>
     public void TestDie()
     {
         ChangeState(AIState.Die);
     }
+    /// <summary>
+    /// 测试（通过Button）手动触发技能状态
+    /// </summary>
     public void TestSkill()
     {
         ChangeState(AIState.Skill);
     }
-
+    /// <summary>
+    /// 根据两个状态来调用相应的进入和退出函数，在子类中可重写这些函数来实现一些功能
+    /// </summary>
+    /// <param name="NewState"></param>
+    /// <param name="OldState"></param>
     private void StateChangeCallBackDeal(AIState NewState,AIState OldState)
     {
         switch (OldState)
@@ -423,16 +448,19 @@ public abstract class AINew : MonoBehaviour
     public virtual void OnJustExitDieState() { }
     public virtual void OnJustEnterBackState() { }
     public virtual void OnJustExitBackState() { }
-
+    /// <summary>
+    /// CD控制协程，通过每秒一次的速度来遍历冷却列表，并将冷却完毕的技能添加到优先级队列中
+    /// </summary>
+    /// <returns></returns>
     IEnumerator CalCD()
     {
         List<SkillCDAndWeight_New> WillDel = new List<SkillCDAndWeight_New>();
         while (true)
         {
             yield return new WaitForSeconds(1);
-            if (CdCalList.Count > 0)
+            if (_cdCalList.Count > 0)
             {
-                foreach (SkillCDAndWeight_New item in CdCalList)
+                foreach (SkillCDAndWeight_New item in _cdCalList)
                 {
                     if (item.SkillIsReady())
                     {
@@ -443,7 +471,7 @@ public abstract class AINew : MonoBehaviour
                 {
                     foreach (SkillCDAndWeight_New item in WillDel)
                     {
-                        CdCalList.Remove(item);
+                        _cdCalList.Remove(item);
                         if (item.CD != 999)
                         {
                             PropertyQueue.Push(item);
@@ -455,26 +483,34 @@ public abstract class AINew : MonoBehaviour
             }
         }
     }
-
+    /// <summary>
+    /// 手动返回一个当前可释放的技能
+    /// </summary>
+    /// <returns></returns>
     protected SkillCDAndWeight_New GetOneSkillInPropertyList()
     {
         SkillCDAndWeight_New skillCdAndWeightNew = PropertyQueue.Pop();
         return skillCdAndWeightNew;
     }
-
+    /// <summary>
+    /// 手动将一个技能添加到冷却列表中
+    /// </summary>
+    /// <param name="skill">要冷却的技能</param>
     protected void AddSkillTocdList(SkillCDAndWeight_New skill)
     {
         if (skill==null)
         {
             return;
         }
-        CdCalList.Add(skill);
+        _cdCalList.Add(skill);
     }
-
+    /// <summary>
+    /// AI被消灭（setActive(false)）后的一系列初始化
+    /// </summary>
     void OnDisable()
     {
         StopCoroutine(CalCD());
-        CdCalList.Clear();
+        _cdCalList.Clear();
         PropertyQueue.clear();
         ChangeState(AIState.Idle);
     }
