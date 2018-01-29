@@ -4,31 +4,33 @@ using JetBrains.Annotations;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class NormalAttack : ITriggerAIAction
+public class YuRenNormalAttack : ITriggerAIAction
 {
-
     private Animator Ani;
     private AINew ai;
-    private string[] AniTriggerStringArray;
+    private string AniTriggerString;
     private float OncTime;
     private NavMeshAgent NV;
-
+    private float TwiceTime;
 
     private Coroutine co;
 
+    [CanBeNull] private ISKillTrigger skill;
 
-    public NormalAttack(AINew ai, string[] aniTriggerStringArray, float oncTime, NavMeshAgent nv, Animator ani)
+    public YuRenNormalAttack(AINew ai, string aniTriggerString, float oncTime, NavMeshAgent nv, ISKillTrigger skill, float twiceTime, Animator ani)
     {
         this.ai = ai;
-        AniTriggerStringArray = aniTriggerStringArray;
+        AniTriggerString = aniTriggerString;
         OncTime = oncTime;
         NV = nv;
+        this.skill = skill;
+        TwiceTime = twiceTime;
         Ani = ani;
     }
 
     public void TriggerAction()
     {
-        if (co != null)
+        if (co!=null)
         {
             return;
         }
@@ -37,7 +39,7 @@ public class NormalAttack : ITriggerAIAction
 
     public bool CancelAction(AIState newState)
     {
-        if (!ai.GetComplete() && (newState != AIState.Die && newState != AIState.Idle && newState != AIState.Injured))
+        if (!ai.GetComplete() && (newState != AIState.Die && newState != AIState.Idle))
         {
             return false;
         }
@@ -53,16 +55,18 @@ public class NormalAttack : ITriggerAIAction
         NV.isStopped = true;
         while (true)
         {
-            string animatorString = AniTriggerStringArray[Random.Range(0, AniTriggerStringArray.Length)];
             ai.SetComplete(false);
             ai.transform.LookAt(new Vector3(ai.Target.position.x, ai.transform.position.y, ai.Target.position.z));
-            Ani.SetTrigger(animatorString);
-         //   Debug.Log("攻击中··············");
-            yield return new WaitUntil(() => Ani.GetCurrentAnimatorStateInfo(0).IsName(animatorString));
-            yield return new WaitForSeconds(Ani.GetCurrentAnimatorStateInfo(0).length-0.1f);
+            Ani.SetTrigger(AniTriggerString);
+           // Debug.Log("攻击中··············");
+            yield return new WaitForSeconds(OncTime);
+            skill.TriggerSkill();
+            yield return new WaitForSeconds(TwiceTime);
             ai.SetComplete(true);
-            yield return new WaitForSeconds(1f);
-
+            yield return new WaitForSeconds(0.1f);
+            
         }
     }
+
+
 }

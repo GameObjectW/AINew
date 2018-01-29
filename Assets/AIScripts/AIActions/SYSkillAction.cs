@@ -3,34 +3,32 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class IdleAction : ITriggerAIAction {
+public class SYSkillAction : ITriggerAIAction
+{
     private Animator Ani;
     private AINew ai;
     private string AniTriggerString;
-
+    private float FirstTime;
+    private float SecondTime;
     private NavMeshAgent NV;
+    private int Damage;
 
     private Coroutine co;
 
-    private Renderer[] mr;
-    private Collider[] collider;
-
-
-    private bool isFinishInit=false;
-
-    public IdleAction(AINew ai, string aniTriggerString, NavMeshAgent nv, Renderer[] mr, Collider[] collider, Animator ani)
+    public SYSkillAction(AINew ai, string aniTriggerString, float firstTime, float secondTime, NavMeshAgent nv, int damage, Animator ani)
     {
         this.ai = ai;
         AniTriggerString = aniTriggerString;
+        FirstTime = firstTime;
+        SecondTime = secondTime;
         NV = nv;
-        this.mr = mr;
-        this.collider = collider;
+        Damage = damage;
         Ani = ani;
     }
 
     public void TriggerAction()
     {
-        if (isFinishInit||co != null)
+        if (co != null)
         {
             return;
         }
@@ -39,9 +37,8 @@ public class IdleAction : ITriggerAIAction {
 
     public bool CancelAction(AIState newState)
     {
-        if (!ai.GetComplete())
+        if (!ai.GetComplete() && newState != AIState.Die)
         {
-            Debug.Log("初始化未完成。。。。。。。。。");
             return false;
         }
         UpdateManager.Ins.StopCoroutineCustom(co);
@@ -52,21 +49,16 @@ public class IdleAction : ITriggerAIAction {
 
     IEnumerator Start()
     {
+        NV.isStopped = true;
         ai.SetComplete(false);
-        NV.enabled = true;
-        NV.avoidancePriority = 50;
         Ani.SetTrigger(AniTriggerString);
-    //    Debug.Log("初始化中··············");
-        foreach (Renderer meshRenderer in mr)
-        {
-            meshRenderer.material.SetFloat("_RongJie", 0);
-        }
-        foreach (Collider item in collider)
-        {
-            item.enabled = true;
-        }
+        Debug.Log("释放技能1··············@@@@@@@@@@@@@@@@@@@@@@@@@@");
+        yield return new WaitForSeconds(FirstTime);
+
+        //GameDataManager.Ins.Player.GetComponentInChildren<HitByBulletBase>().BulletDeal(Damage,ai.TheType);
+        yield return new WaitForSeconds(SecondTime);
 
         ai.SetComplete(true);
-        yield return null;
+
     }
 }

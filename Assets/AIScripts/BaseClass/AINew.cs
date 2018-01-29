@@ -26,6 +26,7 @@ public abstract class AINew : MonoBehaviour
 
     public float backThreshold;
 
+
     [Range(0,100)]
     public int CurrentHP;
 
@@ -42,29 +43,51 @@ public abstract class AINew : MonoBehaviour
     private ITriggerAIAction _skillOneAction;
 
     private List<ITriggerAIAction> ActionArray;
-    private Dictionary<AIState, ITriggerAIAction> ActionDic;
+    protected Renderer[] mr;
+    protected Collider[] colliders;
+    protected Animator Ani;
+    protected List<SkillCDAndWeight_New> SkillList = new List<SkillCDAndWeight_New>();
+    protected PropertyQueue<SkillCDAndWeight_New> PropertyQueue = new PropertyQueue<SkillCDAndWeight_New>();
 
+    private Dictionary<AIState, ITriggerAIAction> _actionDic;
+    
+    private List<SkillCDAndWeight_New> CdCalList = new List<SkillCDAndWeight_New>();
 
     // Use this for initialization
     public virtual void Awake()
     {
         NV = GetComponent<NavMeshAgent>();
-        ActionArray = new List<ITriggerAIAction>();
-        
-
+        ActionArray=new List<ITriggerAIAction>();
+        mr = GetComponentsInChildren<Renderer>();
+        colliders = GetComponentsInChildren<Collider>();
+        Ani = GetComponent<Animator>();
     }
+
+    
 
     void OnEnable()
     {
-
+        foreach (SkillCDAndWeight_New skillCdAndWeight in SkillList)
+        {
+            CdCalList.Add(skillCdAndWeight);
+        }
         StartCoroutine(BaseUpdate());
+        StartCoroutine(CalCD());
     }
 
-    public void Start ()
+    public virtual void Start ()
 	{
-        ActionDic = new Dictionary<AIState, ITriggerAIAction>()
+       
+
+    }
+
+    private IEnumerator BaseUpdate()
+    {
+        yield return new WaitForSeconds(0.1f);
+        yield return new WaitUntil(()=>DieAction!=null);
+        _actionDic = new Dictionary<AIState, ITriggerAIAction>()
         {
-            {AIState.Idle,IdleInitAction },
+            {AIState.Idle, IdleInitAction },
             {AIState.Run,RunAction },
             {AIState.Attack,AttackAction },
             {AIState.Die,DieAction },
@@ -73,11 +96,6 @@ public abstract class AINew : MonoBehaviour
             {AIState.Skill,SkillOneAction }
         };
 
-    }
-
-    private IEnumerator BaseUpdate()
-    {
-        yield return new WaitUntil(() => IdleInitAction != null);
         ChangeState(AIState.Idle);
         while (true)
         {
@@ -90,11 +108,12 @@ public abstract class AINew : MonoBehaviour
 
             if (isCanChangeState)
             {
-                if (CurrentSelfToTargetDis < (AttackDistance - backThreshold))
-                {
-                    ChangeState(AIState.Back);
-                }
-                else if (CurrentSelfToTargetDis <= AttackDistance)
+                //if (CurrentSelfToTargetDis < (AttackDistance - backThreshold))
+                //{
+                //    ChangeState(AIState.Back);
+                //}
+                //else 
+                if (CurrentSelfToTargetDis <= AttackDistance)
                 {
                     ChangeState(AIState.Attack);
                 }
@@ -106,7 +125,7 @@ public abstract class AINew : MonoBehaviour
             yield return null;
         }
     }
-    float DistanceSelfToTarget(Transform target)
+    public float DistanceSelfToTarget(Transform target)
     {
         Vector3 SelfPos = transform.position;
         SelfPos.y = 0;
@@ -114,7 +133,14 @@ public abstract class AINew : MonoBehaviour
         TargetPos.y = 0;
         return Vector3.Distance(SelfPos, TargetPos);
     }
-
+    public float DistanceSelfToTarget(Vector3 target)
+    {
+        Vector3 SelfPos = transform.position;
+        SelfPos.y = 0;
+        Vector3 TargetPos = target;
+        TargetPos.y = 0;
+        return Vector3.Distance(SelfPos, TargetPos);
+    }
     private void ChangeState(AIState state)
     {
         if ( NowState == AIState.Die&&state!=AIState.Idle)
@@ -128,12 +154,12 @@ public abstract class AINew : MonoBehaviour
         LastState = NowState;
         NowState = state;
 
-        ActionDic[NowState].TriggerAction();
+        _actionDic[NowState].TriggerAction();
     }
 
     public bool SetCurrentActionStop(AIState state, AIState newState)
     {
-        return ActionDic[state].CancelAction(newState);
+        return _actionDic[state].CancelAction(newState);
     }
 
     private bool isCanChangeState = true;
@@ -276,6 +302,7 @@ public abstract class AINew : MonoBehaviour
             if (value != null)
             {
                 ActionArray.Add(value);
+                _actionDic[AIState.Skill] = value;
             }
             _skillOneAction = value;
         }
@@ -379,27 +406,76 @@ public abstract class AINew : MonoBehaviour
         }
     }
 
-    public virtual void OnJustEnterRunState() { }
-    public virtual void OnJustExitRunState() { }
+    public virtual void OnJustEnterRunState()
+    {
+        NV.avoidancePriority = 50;
+    }
+    public virtual void OnJustExitRunState() { Ani.ResetTrigger("Run");}
     public virtual void OnJustEnterIdleState() { }
     public virtual void OnJustExitIdleState() { }
-    public virtual void OnJustEnterAttackState() { }
+    public virtual void OnJustEnterAttackState() { NV.avoidancePriority = 2;transform.LookAt(new Vector3(Target.position.x,transform.position.y,Target.position.z)); }
     public virtual void OnJustExitAttackState() { }
     public virtual void OnJustEnterInjuredState() { }
     public virtual void OnJustExitInjuredState() { }
-    public virtual void OnJustEnterSkillState() { }
+    public virtual void OnJustEnterSkillState() { transform.LookAt(new Vector3(Target.position.x, transform.position.y, Target.position.z)); }
     public virtual void OnJustExitSkillState() { }
     public virtual void OnJustEnterDieState() { }
     public virtual void OnJustExitDieState() { }
     public virtual void OnJustEnterBackState() { }
     public virtual void OnJustExitBackState() { }
 
+    IEnumerator CalCD()
+    {
+        List<SkillCDAndWeight_New> WillDel = new List<SkillCDAndWeight_New>();
+        while (true)
+        {
+            yield return new WaitForSeconds(1);
+            if (CdCalList.Count > 0)
+            {
+                foreach (SkillCDAndWeight_New item in CdCalList)
+                {
+                    if (item.SkillIsReady())
+                    {
+                        WillDel.Add(item);
+                    }
+                }
+                if (WillDel.Count > 0)
+                {
+                    foreach (SkillCDAndWeight_New item in WillDel)
+                    {
+                        CdCalList.Remove(item);
+                        if (item.CD != 999)
+                        {
+                            PropertyQueue.Push(item);
+                        }
+                    }
+                    WillDel.Clear();
+                }
+
+            }
+        }
+    }
+
+    protected SkillCDAndWeight_New GetOneSkillInPropertyList()
+    {
+        SkillCDAndWeight_New skillCdAndWeightNew = PropertyQueue.Pop();
+        return skillCdAndWeightNew;
+    }
+
+    protected void AddSkillTocdList(SkillCDAndWeight_New skill)
+    {
+        if (skill==null)
+        {
+            return;
+        }
+        CdCalList.Add(skill);
+    }
+
     void OnDisable()
     {
-        //foreach (ITriggerAIAction triggerAiAction in ActionArray)
-        //{
-        //    triggerAiAction.CancelAction(AIState.Idle);
-        //}
+        StopCoroutine(CalCD());
+        CdCalList.Clear();
+        PropertyQueue.clear();
         ChangeState(AIState.Idle);
     }
 }

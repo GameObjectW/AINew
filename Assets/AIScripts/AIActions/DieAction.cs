@@ -11,16 +11,22 @@ public class DieAction : ITriggerAIAction {
     private float DieTime;
     private NavMeshAgent NV;
     private Transform Self;
+    private Renderer[] mr;
+    private Collider[] collider;
+    private float DamageRate;
 
     private Coroutine co;
 
-    public DieAction(AINew ai, string aniTriggerString, float DieTime, NavMeshAgent nv, Transform self)
+    public DieAction(AINew ai, string aniTriggerString, Renderer[] mr, NavMeshAgent nv, Transform self, Collider[] collider, Animator ani, float damageRate)
     {
         this.ai = ai;
         AniTriggerString = aniTriggerString;
-        this.DieTime = DieTime;
+        this.mr = mr;
         NV = nv;
         Self = self;
+        this.collider = collider;
+        Ani = ani;
+        DamageRate = damageRate;
     }
 
     public void TriggerAction()
@@ -45,12 +51,28 @@ public class DieAction : ITriggerAIAction {
         NV.isStopped = true;
         NV.enabled = false;
         ai.SetComplete(false);
-        Self.localScale = Vector3.one;
-        //Ani.SetTrigger(AniTriggerString);
+
+
+        Ani.SetTrigger(AniTriggerString);
         Debug.Log("死亡··············");
-        yield return new WaitForSeconds(DieTime);
-        
-        Self.localScale = new Vector3(0.3f,1,0.3f);
+
+        foreach (Collider item in collider)
+        {
+            item.enabled = false;
+        }
+
+        float t = 0;
+        while (mr[0].material.GetFloat("_RongJie") < 0.95f)
+        {
+            t += Time.deltaTime / 3;
+            foreach (Renderer meshRenderer in mr)
+            {
+                meshRenderer.material.SetFloat("_RongJie", Mathf.Lerp(0, 1, t));
+            }
+
+            yield return null;
+        }
+
         Self.gameObject.SetActive(false);
     }
 }

@@ -48,7 +48,7 @@ public class CFPDSkillAction : ITriggerAIAction {
     {
         NV.isStopped = true;
         ai.SetComplete(false);
-        //Ani.SetTrigger(AniTriggerString);
+        Ani.SetTrigger(AniTriggerString);
         Debug.Log("释放技能1··············");
         yield return new WaitForSeconds(FirstTime);
         Debug.Log("释放技能2··············");

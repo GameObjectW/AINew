@@ -9,16 +9,16 @@ public class RunAction : ITriggerAIAction {
     private AINew ai;
     private string AniTriggerString;
     private Transform Target;
-    private NavMeshAgent NV;
+    private NavMeshAgent _nv;
 
     private Coroutine co;
 
-    public RunAction(AINew ai, string aniTriggerString, Transform Target, NavMeshAgent nv)
+    public RunAction(AINew ai, string aniTriggerString, NavMeshAgent nv, Animator ani)
     {
         this.ai = ai;
         AniTriggerString = aniTriggerString;
-        this.Target = Target;
-        NV = nv;
+        _nv = nv;
+        Ani = ani;
     }
 
     public void TriggerAction()
@@ -39,18 +39,18 @@ public class RunAction : ITriggerAIAction {
 
     IEnumerator Start()
     {
-        NV.isStopped = false;
-        NV.avoidancePriority = 1;
-        //Ani.SetTrigger(AniTriggerString);
+        _nv.isStopped = false;
+        _nv.avoidancePriority = 50;
+        Ani.SetTrigger(AniTriggerString);
         while (true)
         {
 
-            //Ani.SetTrigger(AniTriggerString);
-            Debug.Log("奔跑中··············");
-            NV.SetDestination(Target.position);
+            
+           // Debug.Log("奔跑中··············");
+            _nv.SetDestination(ai.Target.position);
 
             yield return null;
-
+            Ani.ResetTrigger(AniTriggerString);
         }
         
     }

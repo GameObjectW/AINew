@@ -55,8 +55,11 @@
     <Reference Include="UnityEngine">
       <HintPath>E:/Unity5.4_/Editor/Data/Managed/UnityEngine.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.Analytics">
-      <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/UnityAnalytics/UnityEngine.Analytics.dll</HintPath>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.Networking">
+      <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/Networking/UnityEngine.Networking.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TestRunner">
       <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/TestRunner/UnityEngine.TestRunner.dll</HintPath>
@@ -64,14 +67,11 @@
     <Reference Include="nunit.framework">
       <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/TestRunner/net35/unity-custom/nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.Networking">
-      <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/Networking/UnityEngine.Networking.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/GUISystem/UnityEngine.UI.dll</HintPath>
-    </Reference>
     <Reference Include="UnityEngine.Timeline">
       <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/Timeline/RuntimeEditor/UnityEngine.Timeline.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.Analytics">
+      <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/UnityAnalytics/UnityEngine.Analytics.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.HoloLens">
       <HintPath>E:/Unity5.4_/Editor/Data/UnityExtensions/Unity/UnityHoloLens/RuntimeEditor/UnityEngine.HoloLens.dll</HintPath>
@@ -82,15 +82,25 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\AIScripts\AIActions\CFPDSkillAction.cs" />
+    <Compile Include="Assets\AIScripts\AIActions\CFSkillAction.cs" />
     <Compile Include="Assets\AIScripts\AIActions\DieAction.cs" />
+    <Compile Include="Assets\AIScripts\AIActions\FarSkillAction.cs" />
     <Compile Include="Assets\AIScripts\AIActions\IdleAction.cs" />
     <Compile Include="Assets\AIScripts\AIActions\InjuredAction.cs" />
+    <Compile Include="Assets\AIScripts\AIActions\JumpAction.cs" />
     <Compile Include="Assets\AIScripts\AIActions\NormalAttack.cs" />
+    <Compile Include="Assets\AIScripts\AIActions\PaiDiSkillAction.cs" />
     <Compile Include="Assets\AIScripts\AIActions\RunAction.cs" />
+    <Compile Include="Assets\AIScripts\AIActions\SYSkillAction.cs" />
     <Compile Include="Assets\AIScripts\AIActions\TakeBack.cs" />
+    <Compile Include="Assets\AIScripts\AIActions\YuRenNormalAttack.cs" />
+    <Compile Include="Assets\AIScripts\AIInterface\ISKillTrigger.cs" />
     <Compile Include="Assets\AIScripts\AIInterface\ITriggerAIAction.cs" />
     <Compile Include="Assets\AIScripts\BaseClass\AINew.cs" />
-    <Compile Include="Assets\AIScripts\ChildClass\SoliderAI.cs" />
+    <Compile Include="Assets\AIScripts\CDControl\PropertyQueue.cs" />
+    <Compile Include="Assets\AIScripts\CDControl\SkillCDAndWeight_New.cs" />
+    <Compile Include="Assets\AIScripts\ChildClass\JZSoliderAI.cs" />
+    <Compile Include="Assets\AIScripts\ChildClass\LineSoliderAI.cs" />
     <Compile Include="Assets\UpdateManager.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

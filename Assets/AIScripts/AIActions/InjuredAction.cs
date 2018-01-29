@@ -13,12 +13,13 @@ public class InjuredAction : ITriggerAIAction {
 
     private Coroutine co;
 
-    public InjuredAction(AINew ai, string aniTriggerString, float oncTime, NavMeshAgent nv)
+    public InjuredAction(AINew ai, string aniTriggerString, float oncTime, NavMeshAgent nv, Animator ani)
     {
         this.ai = ai;
         AniTriggerString = aniTriggerString;
         OncTime = oncTime;
         NV = nv;
+        Ani = ani;
     }
 
     public void TriggerAction()
@@ -46,7 +47,7 @@ public class InjuredAction : ITriggerAIAction {
     {
         NV.isStopped = true;
         ai.SetComplete(false);
-        //Ani.SetTrigger(AniTriggerString);
+        Ani.SetTrigger(AniTriggerString);
         Debug.Log("被击中··············");
         yield return new WaitForSeconds(OncTime);
         ai.SetComplete(true);
